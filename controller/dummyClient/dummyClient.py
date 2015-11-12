@@ -9,7 +9,7 @@ exitmsg = asyncio.Future()
 @asyncio.coroutine
 def hello():
     print("connecting to server")
-    websocket = yield from websockets.connect('ws://localhost:9000/controller/', extra_headers={"API_KEY": "SUPERUSER"})
+    websocket = yield from websockets.connect('ws://192.168.1.100/controller/', extra_headers={"APIKEY": "SUPERUSER"})
     print("connecting to inputDeamon")
     while True:
         global inputtask
