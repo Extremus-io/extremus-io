@@ -108,6 +108,8 @@ WEBSOCKET_HOST = "127.0.0.1"
 
 WEBSOCKET_PORT = 9000
 
+WS_BASE_URI = "/ws/"
+
 WEBSOCKET_MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',

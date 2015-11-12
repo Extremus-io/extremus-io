@@ -92,7 +92,7 @@ def get_controller(key):
     return cont
 
 
-@Namespace('/controller/')
+@Namespace('controller/')
 class ControllerWebSocket():
     API_KEY = "APIKEY"
 
@@ -144,7 +144,7 @@ class ControllerWebSocket():
     def get_api_key(socket):
         return socket.socket.request_headers.get(ControllerWebSocket.API_KEY)
 
-@Namespace('/')
+@Namespace('user/')
 class UserWebSocket(WSGIMixin):
     API_KEY = "APIKEY"
 
