@@ -1,0 +1,147 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html"/>
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html"/>
+
+<dom-module id="controller-list">
+    <style>
+        :host {
+            display: flex;
+            position: relative;
+            height: 100%;
+            flex-direction:column;
+        }
+
+        .online {
+            background: #4cce4d;
+            width: 10px;
+            height: 10px;
+            border-radius: 10px;
+            top: 15px;
+            left: 15px;
+            display: inline-block;
+            position: absolute;
+        }
+
+        .offline {
+            background: #ce2321;
+            width: 10px;
+            top: 15px;
+            left: 15px;
+            height: 10px;
+            border-radius: 10px;
+            display: inline-block;
+            position: absolute;
+        }
+
+        .controller-menu-item {
+            display: flex;
+            flex-direction: row;
+            min-width: 95%;
+            align-self: center;
+            max-width: calc(100% - 50px);
+            margin-bottom: 25px;
+            background: white;
+            align-items: center;
+            cursor: pointer;
+        }
+        .controller-menu{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            padding-top:25px;
+        }
+        paper-toolbar{
+            --paper-toolbar-background:var(--dark-primary-color);
+        }
+        a{
+            text-decoration: none;
+            color: #32a5a9;
+        }
+        a:active{
+            text-decoration: none;
+            color: #ce3b31;
+        }
+    </style>
+    <template>
+        <iron-ajax
+                auto
+                url="/controllers.json"
+                on-response="handleResponse"
+                on-error="handleError"
+                last-response="{{ data }}"
+                last-error="{{ error }}"
+                id="dajax"
+                loading={{ loading }}
+        >
+        </iron-ajax>
+        <div class="content">
+            <paper-header-panel>
+                <paper-toolbar>
+                    <div class="title">Controllers</div>
+                    <span class="flex"></span>
+                    <paper-icon-button icon="add"></paper-icon-button>
+                </paper-toolbar>
+                <section class="controller-menu">
+                    <template is="dom-repeat" items="{{ data }}">
+                        <paper-material class="controller-menu-item" elevation="1">
+                            <div style="flex:1;align-self:center;margin-left:25px;display:inline-flex;">
+                                <div class="online" hidden="{{ !item.online }}"></div>
+                                <paper-button><a href$="{{ item.id }}">{{ item.name }}</a></paper-button></div>
+                            <div style="flex:1;">{{ item.modules }}</div>
+                            <div>
+                                <paper-menu-button horizontal-align="right">
+                                    <paper-icon-button icon="more-vert" class="dropdown-trigger"></paper-icon-button>
+                                    <paper-menu class="dropdown-content">
+                                        <paper-item>Delete</paper-item>
+                                    </paper-menu>
+                                </paper-menu-button>
+                            </div>
+                        </paper-material>
+                    </template>
+                </section>
+            </paper-header-panel>
+        </div>
+        <paper-toast id="offline"
+                     duration="6000"
+                     text="The app is offline">
+            <span role="button" onclick="{{ retry }}">Retry</span>
+        </paper-toast>
+    </template>
+    <script>
+        Polymer({
+            'is': 'controller-list',
+            'properties': {
+                'loading': true,
+                'online': {
+                    type: Boolean,
+                    value: true,
+                    notify: true
+                },
+                'data': {
+                    type: Object,
+                    value: [],
+                    notify: true
+                }
+            },
+            'handleResponse': function () {
+                this.online = true;
+            },
+            'handleError': function () {
+                this.online = false;
+                this.$.offline.show();
+            },
+            'retry': function () {
+                this.$.dajax.generateRequest();
+            },
+            'getClass': function (online) {
+                if (online) {
+                    return 'online';
+                } else {
+                    return 'offline';
+                }
+            }
+        });
+        document.addEventListener('online-changed', function (data) {
+            console.log(data);
+        });
+    </script>
+</dom-module>

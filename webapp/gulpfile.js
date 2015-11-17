@@ -3,7 +3,7 @@ Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
 This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
 The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
 The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
-Code distributed by Google as part of the polymer project is also
+Code staticributed by Google as part of the polymer project is also
 subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
 */
 
@@ -42,7 +42,7 @@ var styleTask = function (stylesPath, srcs) {
     .pipe($.autoprefixer(AUTOPREFIXER_BROWSERS))
     .pipe(gulp.dest('.tmp/' + stylesPath))
     .pipe($.if('*.css', $.cssmin()))
-    .pipe(gulp.dest('dist/' + stylesPath))
+    .pipe(gulp.dest('static/' + stylesPath))
     .pipe($.size({title: stylesPath}));
 };
 
@@ -76,7 +76,7 @@ gulp.task('images', function () {
       progressive: true,
       interlaced: true
     })))
-    .pipe(gulp.dest('dist/images'))
+    .pipe(gulp.dest('static/images'))
     .pipe($.size({title: 'images'}));
 });
 
@@ -88,39 +88,50 @@ gulp.task('copy', function () {
     '!app/precache.json'
   ], {
     dot: true
-  }).pipe(gulp.dest('dist'));
+  }).pipe(gulp.dest('static'));
 
+  var scripts = gulp.src([
+      'app/scripts/*'
+  ]).pipe(gulp.dest('static/scripts'));
+  var templates = gulp.src([
+      'app/index.html'
+  ]).pipe(gulp.dest('templates'));
   var bower = gulp.src([
     'bower_components/**/*'
-  ]).pipe(gulp.dest('dist/bower_components'));
+  ]).pipe(gulp.dest('static/bower_components'));
 
   var elements = gulp.src(['app/elements/**/*.html'])
-    .pipe(gulp.dest('dist/elements'));
+    .pipe(gulp.dest('static/elements'));
 
   var swBootstrap = gulp.src(['bower_components/platinum-sw/bootstrap/*.js'])
-    .pipe(gulp.dest('dist/elements/bootstrap'));
+    .pipe(gulp.dest('static/elements/bootstrap'));
 
   var swToolbox = gulp.src(['bower_components/sw-toolbox/*.js'])
-    .pipe(gulp.dest('dist/sw-toolbox'));
+    .pipe(gulp.dest('static/sw-toolbox'));
 
   var vulcanized = gulp.src(['app/elements/elements.html'])
     .pipe($.rename('elements.vulcanized.html'))
-    .pipe(gulp.dest('dist/elements'));
+    .pipe(gulp.dest('static/elements'));
 
-  return merge(app, bower, elements, vulcanized, swBootstrap, swToolbox)
+  return merge(app, bower, elements, vulcanized, swBootstrap, swToolbox, templates)
     .pipe($.size({title: 'copy'}));
 });
 
-// Copy Web Fonts To Dist
+// Copy Web Fonts To static
 gulp.task('fonts', function () {
   return gulp.src(['app/fonts/**'])
-    .pipe(gulp.dest('dist/fonts'))
+    .pipe(gulp.dest('static/fonts'))
     .pipe($.size({title: 'fonts'}));
 });
 
 // Scan Your HTML For Assets & Optimize Them
 gulp.task('html', function () {
-  var assets = $.useref.assets({searchPath: ['.tmp', 'app', 'dist']});
+  var assets = $.useref.assets({searchPath: ['.tmp', 'app', 'static','templates']});
+  var templates = gulp.src(['app/index.html'])
+    // Replace path for vulcanized assets
+    .pipe($.if('*.html', $.replace('elements/elements.html', 'elements/elements.vulcanized.html')))
+    .pipe(gulp.dest('templates'))
+    .pipe($.size({title: 'template'}));
 
   return gulp.src(['app/**/*.html', '!app/{elements,test}/**/*.html'])
     // Replace path for vulcanized assets
@@ -140,15 +151,15 @@ gulp.task('html', function () {
       spare: true
     })))
     // Output Files
-    .pipe(gulp.dest('dist'))
+    .pipe(gulp.dest('static'))
     .pipe($.size({title: 'html'}));
 });
 
 // Vulcanize imports
 gulp.task('vulcanize', function () {
-  var DEST_DIR = 'dist/elements';
+  var DEST_DIR = 'static/elements';
 
-  return gulp.src('dist/elements/elements.vulcanized.html')
+  return gulp.src('static/elements/elements.vulcanized.html')
     .pipe($.vulcanize({
       stripComments: true,
       inlineCss: true,
@@ -158,24 +169,28 @@ gulp.task('vulcanize', function () {
     .pipe($.size({title: 'vulcanize'}));
 });
 
-// Generate a list of files that should be precached when serving from 'dist'.
+// Generate a list of files that should be precached when serving from 'static'.
 // The list will be consumed by the <platinum-sw-cache> element.
 gulp.task('precache', function (callback) {
-  var dir = 'dist';
+  var dir = 'static';
 
-  glob('{elements,scripts,styles}/**/*.*', {cwd: dir}, function(error, files) {
+  glob('{elements,scripts,styles,images}/**/*.*', {cwd: dir}, function(error, files) {
     if (error) {
       callback(error);
     } else {
-      files.push('index.html', './', 'bower_components/webcomponentsjs/webcomponents-lite.min.js');
+      for(var i=0;i<files.length;i++){
+        files[i]='/static/'+files[i];
+      }
+      files.push('/static/index.html', '/', '/static/bower_components/webcomponentsjs/webcomponents-lite.min.js');
       var filePath = path.join(dir, 'precache.json');
+
       fs.writeFile(filePath, JSON.stringify(files), callback);
     }
   });
 });
 
 // Clean Output Directory
-gulp.task('clean', del.bind(null, ['.tmp', 'dist']));
+gulp.task('clean', del.bind(null, ['.tmp', 'static', 'templates']));
 
 // Watch Files For Changes & Reload
 gulp.task('serve', ['styles', 'elements', 'images'], function () {
@@ -210,8 +225,8 @@ gulp.task('serve', ['styles', 'elements', 'images'], function () {
   gulp.watch(['app/images/**/*'], reload);
 });
 
-// Build and serve the output from the dist build
-gulp.task('serve:dist', ['default'], function () {
+// Build and serve the output from the static build
+gulp.task('serve:static', ['default'], function () {
   browserSync({
     notify: false,
     logPrefix: 'PSK',
@@ -227,7 +242,7 @@ gulp.task('serve:dist', ['default'], function () {
     // Note: this uses an unsigned certificate which on first access
     //       will present a certificate warning in the browser.
     // https: true,
-    server: 'dist',
+    server: 'static',
     middleware: [ historyApiFallback() ]
   });
 });
@@ -238,7 +253,7 @@ gulp.task('default', ['clean'], function (cb) {
     ['copy', 'styles'],
     'elements',
     ['jshint', 'images', 'fonts', 'html'],
-    'vulcanize',
+    'vulcanize','precache',
     cb);
     // Note: add , 'precache' , after 'vulcanize', if your are going to use Service Worker
 });

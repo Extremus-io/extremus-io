@@ -7,9 +7,9 @@ global inputtask
 exitmsg = asyncio.Future()
 
 @asyncio.coroutine
-def hello():
+def hello(ApiKey):
     print("connecting to server")
-    websocket = yield from websockets.connect('ws://192.168.1.100:1000/ws/controller/', extra_headers={"APIKEY": "SUPERUSER"})
+    websocket = yield from websockets.connect('ws://localhost/ws/user/', extra_headers={"APIKEY": ApiKey})
     print("connecting to inputDeamon")
     while True:
         global inputtask
@@ -57,12 +57,13 @@ def inputData(future, data):
     future.set_result(data)
 
 
-def run_socket(loop):
+def run_socket(loop,ApiKey):
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(hello())
+    loop.run_until_complete(hello(ApiKey))
 
 
 loop = asyncio.get_event_loop()
-thread = Thread(target=run_socket, args=(loop,))
+ApiKey = input("APIKEY:")
+thread = Thread(target=run_socket, args=(loop, ApiKey))
 thread.start()
 listenInput()

@@ -15,8 +15,16 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.contrib import admin
+from webapp import urls as webapp_urls
+from controller import urls as cont_urls
+from . import views
+
 
 urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
-    url(r'^test/', 'extremus.views.environ')
+    url(r'^controllers', include(cont_urls)),
+    url(r'^login/', views.login),
+    url(r'^logout/', views.logout),
+    url(r'^', include(webapp_urls))
 ]
+

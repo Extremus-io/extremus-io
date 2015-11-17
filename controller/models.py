@@ -3,8 +3,11 @@ import random
 from django.contrib.auth.models import User
 from djwebsockets.decorator import Namespace
 from djwebsockets.server import WebSocketServer
+from djwebsockets.websocket import BaseWSClass
 from djwebsockets.mixins.wsgi import WSGIMixin
 import json
+from websockets import WebSocketClientProtocol
+import asyncio
 
 
 class ApiKeyManager(models.Manager):
@@ -38,7 +41,9 @@ class ControllerUser(models.Model):
 
     user = models.ForeignKey(User, rel=models.OneToOneRel)
     api_keys = models.ManyToManyField(ApiKey)
-    controllers = {}
+
+    def __str__(self):
+        return self.user.username
 
 
 class Controller(models.Model):
@@ -47,10 +52,13 @@ class Controller(models.Model):
         self.websocket = WebSocketServer.get_websocket_by_id(self.ws_id)
         self.online = self.websocket is not None
 
+    def __str__(self):
+        return self.name
+
     name = models.CharField(max_length=20, default="New controller")
     api_key = models.ForeignKey(ApiKey)
-    modules = models.CharField(max_length=1000)
-    ws_id = models.PositiveIntegerField(null=True)
+    modules = models.CharField(max_length=1000, blank=True)
+    ws_id = models.PositiveIntegerField(blank=True)
     online = models.BooleanField(default=False)
 
     def go_online(self, ws_id):
@@ -93,42 +101,32 @@ def get_controller(key):
 
 
 @Namespace('controller/')
-class ControllerWebSocket():
+class ControllerWebSocket(BaseWSClass):
     API_KEY = "APIKEY"
 
     @classmethod
     def on_connect(cls, socket, path):
-        print(socket.socket.request_headers)
-        key = cls.get_api_key(socket)
-        if key is None:
-            data = {"auth": False, "reason": "No API_KEY"}
-            socket.send(json.dumps(data))
-            socket.close()
-            return
-        controller = get_controller(key)
-        if controller is None:
-            data = {"auth": False, "reason": "Invalid Key"}
-            socket.send(json.dumps(data))
-            socket.close()
-            return
-        controller.websocket = socket
-        controller.online = True
-        data = {"auth": True}
+        data = {"get": "auth"}
         socket.send(json.dumps(data))
-        controller.go_online(socket.id)
+        socket.auth = lambda: None
+        socket.auth = False
         print("Controller Connected")
 
     @classmethod
     def on_message(cls, socket, message):
+        if not socket.auth:
+            if cls.authenticate(message, socket):
+                print("Controller Authenticated")
+                return
+            else:
+                return
         print("received: {}".format(message))
-        socket.send(message)
-        try:
-            msg = json.loads(message)
-            to = msg.get("to")
-        except:
-            pass
-
-
+        socket.send(" GOT {}".format(message))
+        # try:
+        #     msg = json.loads(message)
+        #     to = msg.get("to")
+        # except:
+        #     pass
         #TODO: implement PROTOCOL
 
     @classmethod
@@ -141,37 +139,58 @@ class ControllerWebSocket():
         print("controller disconnected")
 
     @staticmethod
+    def authenticate(message, socket):
+        data = json.loads(message)
+        key = data.get(ControllerWebSocket.API_KEY, None)
+        if key is None:
+            data = {"auth": False, "reason": "No API_KEY"}
+            socket.send(json.dumps(data))
+            socket.close()
+            print("make sure to send apikey first to authenticate and identify the device")
+            return False
+        controller = get_controller(key)
+        if controller is None:
+            data = {"auth": False, "reason": "Invalid Key"}
+            socket.send(json.dumps(data))
+            socket.close()
+            print("The key entered is not valid")
+            return False
+        controller.websocket = socket
+        controller.online = True
+        controller.go_online(socket.id)
+        socket.auth = True
+        data = {"auth": True}
+        socket.send(json.dumps(data))
+        socket.key = lambda: None
+        socket.key = key
+        return True
+
+    @staticmethod
     def get_api_key(socket):
-        return socket.socket.request_headers.get(ControllerWebSocket.API_KEY)
+        try:
+            return socket.key
+        except AttributeError:
+            return None
+
 
 @Namespace('user/')
-class UserWebSocket(WSGIMixin):
-    API_KEY = "APIKEY"
-
+class UserWebSocket(WSGIMixin, BaseWSClass):
     @classmethod
     def on_connect(cls, socket, path):
+        print("CONNECTED")
         print(socket.user)
 
     @classmethod
     def on_message(cls, socket, message):
-        print("received: {}".format(message))
-        socket.send(message+socket.user.username)
         try:
             msg = json.loads(message)
             to = msg.get("to")
+            cont = WebSocketServer.get_websocket_by_id(int(to))
+            try:
+                print("Sending data to {}".format(cont.key))
+            except:
+                pass
+            if cont is not None:
+                cont.send(msg.get('msg', "blank"))
         except:
             pass
-
-    @classmethod
-    def on_close(cls, socket):
-        key = cls.get_api_key(socket)
-        if key is not None:
-            cont = get_controller(key)
-            if cont is not None:
-                cont.go_offline()
-        print("controller disconnected")
-
-    @staticmethod
-    def get_api_key(socket):
-        return socket.socket.request_headers.get(ControllerWebSocket.API_KEY)
-

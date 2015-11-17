@@ -1,0 +1,86 @@
+<dom-module id="login-dialog">
+    <style>
+
+    </style>
+    <template>
+        <paper-dialog modal id="login_dialog" entry-animation="slide-down-animation"
+                      exit-animation="fade-out-animation">
+            <iron-ajax auto id="login_ajax" url="/login/" handle-as="json"
+                       last-response="{{ login_fields }}"></iron-ajax>
+            <iron-ajax id="loginPostAjax" url="/login/" method="POST" handle-as="json"
+                       content-type="application/json"
+                       on-response="handleLoginResponse"
+            ></iron-ajax>
+            <form id="login_form">
+                <template is="dom-repeat" items="{{ login_fields }}">
+                    <paper-input label="{{ item.label }}" type="{{ item.input_type }}"
+                                 name="{{ item.id }}" id="{{ item.id }}" auto-validate></paper-input>
+                </template>
+            </form>
+            <div class="buttons">
+                <paper-button on-click="login" type="submit">Login</paper-button>
+                <paper-button dialog-confirm>Close</paper-button>
+            </div>
+            <iron-a11y-keys keys="enter" target="{{ target }}" on-keys-pressed="login"></iron-a11y-keys>
+        </paper-dialog>
+    </template>
+    <script>
+        /* jshint ignore:start*/
+        Polymer({
+            is: 'login-dialog',
+            properties: {
+                target: {
+                    type: Object,
+                    value: function () {
+                        return [this.$.password,this.$.username];
+                    }
+                }
+            },
+            login: function () {
+                var form = this.$.login_form;
+                var data = {};
+                for (var i = 0; i < form.length; i++) {
+                    data[form.elements[i].name] = form.elements[i].value;
+                }
+                var ajax = this.$.loginPostAjax;
+                ajax.body = JSON.stringify(data);
+                ajax.headers = {'X-CSRFToken': getCookie('csrftoken')};
+                ajax.generateRequest();
+            },
+            handleLoginResponse: function () {
+                var ajax = this.$.loginPostAjax;
+                if (ajax.lastResponse.auth) {
+                    window.location.reload();
+                }
+                else {
+                    var errors = ajax.lastResponse;
+                    for (var ele in errors) {
+                        if (ele != '__all__') {
+                            document.getElementById(ele).errorMessage = errors[ele].join();
+                            document.getElementById(ele).invalid = true;
+                        }
+                    }
+                }
+            },
+            open: function () {
+                this.$.login_dialog.open();
+                this.querySelector('input').focus();
+            }
+        });
+        function login() {
+            document.querySelector('login-dialog').login();
+        }
+        function getCookie(cname) {
+            var name = cname + "=";
+            var ca = document.cookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1);
+                if (c.indexOf(name) == 0) return c.substring(name.length, c.length);
+            }
+            return "";
+        }
+        /* jshint ignore:start*/
+    </script>
+</dom-module>
+

@@ -40,6 +40,8 @@ INSTALLED_APPS = (
     'djwebsockets',
     'controller',
     'pubsub',
+    'webapp',
+    'rest_framework',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -103,12 +105,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_DIRS = (
+    os.path.join(BASE_DIR, 'webapp/static')
+)
 
 WEBSOCKET_HOST = "127.0.0.1"
 
 WEBSOCKET_PORT = 9000
 
-WS_BASE_URI = "/ws/"
+WEBSOCKET_BASE_URI = "/ws/"
 
 WEBSOCKET_MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
