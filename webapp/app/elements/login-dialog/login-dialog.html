@@ -1,6 +1,17 @@
 <dom-module id="login-dialog">
     <style>
-
+        #login_error{
+            background: rgba(200, 67, 61, 0.3);
+            color: #b33831;
+        }
+        paper-dialog{
+            width:400px;
+        }
+        .title{
+            font-size:2em;
+            color:#0b5e5d;
+            margin-top:30px;
+        }
     </style>
     <template>
         <paper-dialog modal id="login_dialog" entry-animation="slide-down-animation"
@@ -11,17 +22,21 @@
                        content-type="application/json"
                        on-response="handleLoginResponse"
             ></iron-ajax>
-            <form id="login_form">
+            <div class="title">Extremus Login</div>
+            <div id="login_error">{{ GlobalLoginError }}</div>
+            <form id="login_form" onsubmit="return login();">
                 <template is="dom-repeat" items="{{ login_fields }}">
                     <paper-input label="{{ item.label }}" type="{{ item.input_type }}"
                                  name="{{ item.id }}" id="{{ item.id }}" auto-validate></paper-input>
                 </template>
+                <input type="submit" value="submit" hidden/>
+
+                <div class="buttons">
+                    <paper-button on-click="login">Login</paper-button>
+                    <paper-button dialog-dismiss>Close</paper-button>
+                </div>
             </form>
-            <div class="buttons">
-                <paper-button on-click="login" type="submit">Login</paper-button>
-                <paper-button dialog-confirm>Close</paper-button>
-            </div>
-            <iron-a11y-keys keys="enter" target="{{ target }}" on-keys-pressed="login"></iron-a11y-keys>
+            <!--<iron-a11y-keys keys="enter" target="{{ target }}" on-keys-pressed="login"></iron-a11y-keys>-->
         </paper-dialog>
     </template>
     <script>
@@ -32,7 +47,7 @@
                 target: {
                     type: Object,
                     value: function () {
-                        return [this.$.password,this.$.username];
+                        return this.$.password;
                     }
                 }
             },
@@ -48,16 +63,21 @@
                 ajax.generateRequest();
             },
             handleLoginResponse: function () {
+                this.GlobalLoginError="";
                 var ajax = this.$.loginPostAjax;
                 if (ajax.lastResponse.auth) {
                     window.location.reload();
                 }
                 else {
                     var errors = ajax.lastResponse;
+                    document.getElementById('password').value="";
                     for (var ele in errors) {
                         if (ele != '__all__') {
-                            document.getElementById(ele).errorMessage = errors[ele].join();
+                            document.getElementById(ele).errorMessage = errors[ele].join(", ");
                             document.getElementById(ele).invalid = true;
+                        }
+                        else{
+                            this.GlobalLoginError=errors[ele].join(", ");
                         }
                     }
                 }
@@ -69,6 +89,7 @@
         });
         function login() {
             document.querySelector('login-dialog').login();
+            return false;
         }
         function getCookie(cname) {
             var name = cname + "=";

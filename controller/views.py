@@ -17,18 +17,20 @@ class ControllerSerializer(HyperlinkedModelSerializer):
 
 @api_view(['GET'])
 def ControllerList(request):
-    try:
-        keys = ControllerUser.objects.get(user=request.user).api_keys.all()
-    except ControllerUser.DoesNotExist:
-        ControllerUser.create(user=request.user)
-        keys = ControllerUser.objects.get(user=request.user).api_keys.all()
-    json = []
-    for key in keys:
-        cont = get_controller(key.key)
-        if cont is not None:
-            data = ControllerSerializer(cont, context={'request': request})
-            json.append(data.data)
-    return Response(json)
+    if request.user.is_authenticated():
+        try:
+            keys = ControllerUser.objects.get(user=request.user).api_keys.all()
+        except ControllerUser.DoesNotExist:
+            ControllerUser.create(user=request.user)
+            keys = ControllerUser.objects.get(user=request.user).api_keys.all()
+        json = []
+        for key in keys:
+            cont = get_controller(key.key)
+            if cont is not None:
+                data = ControllerSerializer(cont, context={'request': request})
+                json.append(data.data)
+        return Response(json)
+    return Response(status.HTTP_401_UNAUTHORIZED)
 
 
 @api_view(['GET', 'PUT', 'DELETE'])

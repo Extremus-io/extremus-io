@@ -2,6 +2,7 @@ import asyncio
 import websockets
 import sys
 from threading import Thread,Event
+import json
 
 global inputtask
 exitmsg = asyncio.Future()
@@ -9,8 +10,9 @@ exitmsg = asyncio.Future()
 @asyncio.coroutine
 def hello(ApiKey):
     print("connecting to server")
-    websocket = yield from websockets.connect('ws://localhost/ws/user/', extra_headers={"APIKEY": ApiKey})
+    websocket = yield from websockets.connect('ws://localhost/ws/controller/', extra_headers={"APIKEY": ApiKey})
     print("connecting to inputDeamon")
+    yield from websocket.send(json.dumps({"APIKEY": ApiKey}))
     while True:
         global inputtask
         inputtask = asyncio.Future()
