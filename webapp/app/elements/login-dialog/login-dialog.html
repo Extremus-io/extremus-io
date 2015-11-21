@@ -3,27 +3,38 @@
         #login_error{
             background: rgba(200, 67, 61, 0.3);
             color: #b33831;
+            padding:15px;
+            margin-top:0px;
         }
         paper-dialog{
             width:400px;
         }
         .title{
             font-size:2em;
-            color:#0b5e5d;
+            color:var(--text-primary-color);
             margin-top:30px;
+            display: flex;
+            padding:20px;
+            background:var(--default-primary-color);
+            align-items:center;
+            margin-top:0px;
+        }
+        .title img{
+            height:35px;
+            margin-right:20px;
         }
     </style>
     <template>
         <paper-dialog modal id="login_dialog" entry-animation="slide-down-animation"
-                      exit-animation="fade-out-animation">
+                      exit-animation="fade-out-animation" on-iron-overlay-closed="reset" on-iron-overlay-opened="handleDialogOpen">
             <iron-ajax auto id="login_ajax" url="/login/" handle-as="json"
                        last-response="{{ login_fields }}"></iron-ajax>
             <iron-ajax id="loginPostAjax" url="/login/" method="POST" handle-as="json"
                        content-type="application/json"
                        on-response="handleLoginResponse"
             ></iron-ajax>
-            <div class="title">Extremus Login</div>
-            <div id="login_error">{{ GlobalLoginError }}</div>
+            <div class="title"><img src="../../images/touch/Extremus-128x128.png"/> <span>Extremus-IO</span></div>
+            <div id="login_error" hidden$="{{ !Error }}">{{ LoginError }}</div>
             <form id="login_form" onsubmit="return login();">
                 <template is="dom-repeat" items="{{ login_fields }}">
                     <paper-input label="{{ item.label }}" type="{{ item.input_type }}"
@@ -36,7 +47,6 @@
                     <paper-button dialog-dismiss>Close</paper-button>
                 </div>
             </form>
-            <!--<iron-a11y-keys keys="enter" target="{{ target }}" on-keys-pressed="login"></iron-a11y-keys>-->
         </paper-dialog>
     </template>
     <script>
@@ -49,6 +59,10 @@
                     value: function () {
                         return this.$.password;
                     }
+                },
+                Error:{
+                    type: Boolean,
+                    value: false
                 }
             },
             login: function () {
@@ -63,7 +77,8 @@
                 ajax.generateRequest();
             },
             handleLoginResponse: function () {
-                this.GlobalLoginError="";
+                this.LoginError="";
+                this.Error=false;
                 var ajax = this.$.loginPostAjax;
                 if (ajax.lastResponse.auth) {
                     window.location.reload();
@@ -77,7 +92,9 @@
                             document.getElementById(ele).invalid = true;
                         }
                         else{
-                            this.GlobalLoginError=errors[ele].join(", ");
+                            this.Error = true;
+                            this.LoginError=errors[ele].join(", ");
+                            this.$.login_dialog.refit();
                         }
                     }
                 }
@@ -85,6 +102,13 @@
             open: function () {
                 this.$.login_dialog.open();
                 this.querySelector('input').focus();
+            },
+            reset: function(){
+                this.LoginError="";
+                this.Error=false;
+            },
+            handleDialogOpen: function(){
+                this.$.login_form.elements[0].focus();
             }
         });
         function login() {
