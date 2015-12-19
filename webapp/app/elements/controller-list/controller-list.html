@@ -1,13 +1,10 @@
-<link rel="import" href="../../bower_components/polymer/polymer.html"/>
-<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html"/>
-
 <dom-module id="controller-list">
     <style>
         :host {
             display: flex;
             position: relative;
             height: 100%;
-            flex-direction:column;
+            flex-direction: column;
         }
 
         .online {
@@ -36,29 +33,45 @@
             display: flex;
             flex-direction: row;
             min-width: 95%;
-            align-self: center;
+            align-this: center;
             max-width: calc(100% - 50px);
             margin-bottom: 25px;
             background: white;
             align-items: center;
             cursor: pointer;
         }
-        .controller-menu{
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            padding-top:25px;
+
+        .controller-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 25px;
         }
-        paper-toolbar{
-            --paper-toolbar-background:var(--dark-primary-color);
+
+        paper-toolbar {
+            --paper-toolbar-background: var(--dark-primary-color);
         }
-        a{
+
+        a {
             text-decoration: none;
             color: #32a5a9;
         }
+
         a:active {
             text-decoration: none;
             color: #ce3b31;
+        }
+        .controller-detail{
+            margin:15px;
+            padding:25px;
+            font-size:15px;
+        }
+        #console{
+            padding:20px;
+            background:rgba(255,255,255,0.4);
+            border-radius:10px;
+            height:300px;
+            overflow:auto;
         }
     </style>
     <template>
@@ -80,24 +93,35 @@
                     <span class="flex"></span>
                     <paper-icon-button icon="add"></paper-icon-button>
                 </paper-toolbar>
-                <section class="controller-menu">
-                    <template is="dom-repeat" items="{{ data }}">
-                        <paper-material class="controller-menu-item" elevation="1">
-                            <div style="flex:1;align-self:center;margin-left:25px;display:inline-flex;">
-                                <div class="online" hidden="{{ !item.online }}"></div>
-                                <paper-button><a href$="{{ item.id }}">{{ item.name }}</a></paper-button></div>
-                            <div style="flex:1;">{{ item.modules }}</div>
-                            <div>
-                                <paper-menu-button horizontal-align="right">
-                                    <paper-icon-button icon="more-vert" class="dropdown-trigger"></paper-icon-button>
-                                    <paper-menu class="dropdown-content">
-                                        <paper-item>Delete</paper-item>
-                                    </paper-menu>
-                                </paper-menu-button>
-                            </div>
-                        </paper-material>
-                    </template>
-                </section>
+                <iron-pages attr-for-selected="data-route" selected="{{ display }}">
+                    <section data-route="menu" class="controller-menu">
+                        <template is="dom-repeat" items="{{ data }}">
+                            <paper-material class="controller-menu-item" elevation="1">
+                                <div style="flex:1;align-this:center;margin-left:25px;display:inline-flex;">
+                                    <div class="online" hidden="{{ !item.online }}"></div>
+                                    <paper-button><a href$="{{ item.id }}">{{ item.name }}</a></paper-button>
+                                </div>
+                                <div style="flex:1;">{{ item.modules }}</div>
+                                <div>
+                                    <paper-menu-button horizontal-align="right">
+                                        <paper-icon-button icon="more-vert"
+                                                           class="dropdown-trigger"></paper-icon-button>
+                                        <paper-menu class="dropdown-content">
+                                            <paper-item>Delete</paper-item>
+                                        </paper-menu>
+                                    </paper-menu-button>
+                                </div>
+                            </paper-material>
+                        </template>
+                    </section>
+                    <section class="controller-detail" data-route="detail">
+                        <h2>Console</h2>
+                        <code>
+                            <pre id="console"></pre>
+                        </code>
+                        <paper-input></paper-input>
+                    </section>
+                </iron-pages>
             </paper-header-panel>
         </div>
         <paper-toast id="offline"
@@ -107,6 +131,7 @@
         </paper-toast>
     </template>
     <script>
+        //jshint ignore:start
         Polymer({
             'is': 'controller-list',
             'properties': {
@@ -120,6 +145,15 @@
                     type: Object,
                     value: [],
                     notify: true
+                },
+                'display': {
+                    type: String,
+                    value: 'menu',
+                    notify: true
+                },
+                'detail': {
+                    type: Number,
+                    value: -1
                 }
             },
             'handleResponse': function () {
@@ -138,8 +172,32 @@
                 } else {
                     return 'offline';
                 }
+            },
+            'showDetail': function (ws, cont_id) {
+                data = {type: 'sub', to: cont_id};
+                ws.send(JSON.stringify(data));
+                this.$.console.textContent="";
+                this.display = 'detail';
+                this.detail = cont_id;
+                return true;
+            },
+            'showMenu': function (ws) {
+                if (this.detail != -1) {
+                    data = {type: 'unsub', to: this.detail};
+                    ws.send(JSON.stringify(data))
+                }
+                this.display = 'menu';
+            },
+            'msgHandler': function (msg) {
+                data = "";
+                msg = JSON.parse(msg);
+                for (key in msg)
+                    data += ">> "+key + " : " + msg[key] + "\n"
+                this.$.console.textContent += data + "\n";
+                this.$.console.scrollTop = this.$.console.scrollHeight;
             }
         });
+        //jshint ignore:end
         document.addEventListener('online-changed', function (data) {
             console.log(data);
         });

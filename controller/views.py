@@ -1,18 +1,8 @@
-from django.contrib.auth.models import AnonymousUser
-from .models import Controller, ControllerUser, get_controller
-from rest_framework.serializers import HyperlinkedModelSerializer
+from .models import Controller, ControllerUser, get_controller, ControllerSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from json import dumps
-
 # Create your views here.
-
-
-class ControllerSerializer(HyperlinkedModelSerializer):
-    class Meta:
-        model = Controller
-        fields = ('id', 'name', 'modules', 'online')
 
 
 @api_view(['GET'])

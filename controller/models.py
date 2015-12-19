@@ -4,10 +4,9 @@ from django.contrib.auth.models import User
 from djwebsockets.decorator import Namespace
 from djwebsockets.server import WebSocketServer
 from djwebsockets.websocket import BaseWSClass
+from rest_framework.serializers import HyperlinkedModelSerializer
 from djwebsockets.mixins.wsgi import WSGIMixin
 import json
-from websockets import WebSocketClientProtocol
-import asyncio
 
 
 class ApiKeyManager(models.Manager):
@@ -63,13 +62,20 @@ class Controller(models.Model):
 
     def go_online(self, ws_id):
         self.ws_id = ws_id
-        self.save()
         self.online = True
+        self.save()
 
     def go_offline(self):
         self.ws_id = -1
-        self.save()
         self.online = False
+        self.save()
+
+    def save(self,*args,**kwargs):
+        super().save(*args, **kwargs)
+        update = ControllerSerializer(self)
+        data = update.data
+        data['type'] = 'update'
+        self.pub(json.dumps(data))
 
     def get(self):
         raise NotImplemented
@@ -77,14 +83,20 @@ class Controller(models.Model):
     def set(self):
         raise NotImplemented
 
-    def pub(self):
-        raise NotImplemented
+    def pub(self, data):
+        ControllerPubSub.pub(self, data)
 
     def sub(self):
         raise NotImplemented
 
     def unsub(self):
         raise NotImplemented
+
+
+class ControllerSerializer(HyperlinkedModelSerializer):
+    class Meta:
+        model = Controller
+        fields = ('id', 'name', 'modules', 'online')
 
 
 def get_controller(key):
@@ -120,14 +132,9 @@ class ControllerWebSocket(BaseWSClass):
                 return
             else:
                 return
-        print("received: {}".format(message))
-        socket.send(" GOT {}".format(message))
-        # try:
-        #     msg = json.loads(message)
-        #     to = msg.get("to")
-        # except:
-        #     pass
-        #TODO: implement PROTOCOL
+        data = {"type": "msg", "msg": message}
+        cont = get_controller(socket.key)
+        cont.pub(json.dumps(data))
 
     @classmethod
     def on_close(cls, socket):
@@ -177,20 +184,76 @@ class ControllerWebSocket(BaseWSClass):
 class UserWebSocket(WSGIMixin, BaseWSClass):
     @classmethod
     def on_connect(cls, socket, path):
-        print("CONNECTED")
-        print(socket.user)
+        if not socket.user.is_authenticated():
+            data = {'auth': False}
+            socket.send(json.dumps(data))
+        print(socket.id)
 
     @classmethod
     def on_message(cls, socket, message):
-        try:
-            msg = json.loads(message)
+        #TODO: catch exception if msg is not parsable and send appropriate error message
+        msg = json.loads(message)
+        type = msg.get("type")
+        if type == "send":
             to = msg.get("to")
             cont = WebSocketServer.get_websocket_by_id(int(to))
-            try:
-                print("Sending data to {}".format(cont.key))
-            except:
-                pass
             if cont is not None:
                 cont.send(msg.get('msg', "blank"))
-        except:
-            pass
+        if type == "sub":
+            to = msg.get("to")
+            if to is not None:
+                ControllerPubSub.sub(socket.id, to)
+        if type == "unsub":
+            to = msg.get("to")
+            if to is not None:
+                ControllerPubSub.unsub(socket.id, to)
+
+
+class ControllerPubSub:
+    room = {}
+
+    @staticmethod
+    def sub(userws, controller_id):
+        try:
+            cont = Controller.objects.get(id=int(controller_id))
+        except Controller.DoesNotExist:
+            data = {'error': {'code': 404, 'msg': 'controller with id {} doesnot exist'.format(controller_id)}}
+            print(json.dumps(data))
+            ws = WebSocketServer.get_websocket_by_id(userws)
+            if ws is not None:
+                ws.send(json.dumps(data))
+            return
+        room = ControllerPubSub.room.get(int(controller_id))
+        if room is None:
+            room = []
+        room.append(userws)
+        ControllerPubSub.room[int(controller_id)] = room
+        print(ControllerPubSub.room)
+        data = ControllerSerializer(cont).data
+        data['sub'] = True
+        data['type'] = 'update'
+        ws = WebSocketServer.get_websocket_by_id(userws)
+        if ws is not None:
+            ws.send(json.dumps(data))
+        print(json.dumps(data))
+
+    @classmethod
+    def unsub(cls, userws, controller_id):
+        room = cls.room.get(int(controller_id))
+        if room is not None:
+            try:
+                room.remove(userws)
+                print('removed a user')
+            except ValueError:
+                pass
+
+    @classmethod
+    def pub(cls, cont, str_data):
+        room = cls.room.get(cont.id, [])
+        for ws_id in room:
+            ws = WebSocketServer.get_websocket_by_id(ws_id)
+            if ws is None:
+                room.remove(ws_id)
+            else:
+                ws.send(str_data)
+

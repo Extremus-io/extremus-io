@@ -2,7 +2,7 @@
     <style>
         #login_error{
             background: rgba(200, 67, 61, 0.3);
-            color: #b33831;
+            color: #C51309;
             padding:15px;
             margin-top:0px;
         }
@@ -26,7 +26,8 @@
     </style>
     <template>
         <paper-dialog modal id="login_dialog" entry-animation="slide-down-animation"
-                      exit-animation="fade-out-animation" on-iron-overlay-closed="reset" on-iron-overlay-opened="handleDialogOpen">
+                      exit-animation="fade-out-animation" on-iron-overlay-closed="reset" on-iron-overlay-opened="handleDialogOpen"
+        no-cancel-on-esc-key$="{{ noCancel }}">
             <iron-ajax auto id="login_ajax" url="/login/" handle-as="json"
                        last-response="{{ login_fields }}"></iron-ajax>
             <iron-ajax id="loginPostAjax" url="/login/" method="POST" handle-as="json"
@@ -44,7 +45,7 @@
 
                 <div class="buttons">
                     <paper-button on-click="login">Login</paper-button>
-                    <paper-button dialog-dismiss>Close</paper-button>
+                    <paper-button disabled$="{{ noCancel }}" dialog-dismiss>Close</paper-button>
                 </div>
             </form>
         </paper-dialog>
@@ -61,6 +62,10 @@
                     }
                 },
                 Error:{
+                    type: Boolean,
+                    value: false
+                },
+                noCancel:{
                     type: Boolean,
                     value: false
                 }

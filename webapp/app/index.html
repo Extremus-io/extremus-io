@@ -1,4 +1,4 @@
-<!--{% verbatim %}-->
+<!--{% verbatim %} dul-->
 <!doctype html>
 <html lang="en-us">
 <head>
@@ -105,7 +105,7 @@
             <!-- Main Content -->
             <div class="content">
                 <iron-pages attr-for-selected="data-route" selected="{{ route }}" style="padding:0px">
-                    <controller-list data-route="controllers"></controller-list>
+                    <controller-list data-route="controllers" id="controller"></controller-list>
                     <div data-route="dashboard"><h1>DashBoard</h1></div>
                     <div data-route="about"><h1>About us</h1></div>
                 </iron-pages>
@@ -119,13 +119,24 @@
                  duration="6000"
                  text="Caching complete! This app will work offline.">
     </paper-toast>
+    <paper-toast id="online-toast"
+                 duration="6000"
+                 text="You are offline">
+    </paper-toast>
+    <paper-toast id="offline-toast"
+                 duration="6000"
+                 text="You are offline">
+        <span style="color:yellowgreen;" onclick="wsConnect();">Retry</span>
+    </paper-toast>
 
     <platinum-sw-register auto-register
                           clients-claim
                           skip-waiting
                           on-service-worker-installed="displayInstalledToast"
                           href="/sw-import.js">
-        <platinum-sw-cache default-cache-strategy="networkFirst"
+        <platinum-sw-fetch path="/(.*).json" handler="networkOnly"></platinum-sw-fetch>
+        <platinum-sw-fetch path="/login/" handler="networkOnly"></platinum-sw-fetch>
+        <platinum-sw-cache default-cache-strategy="fastest"
                            precache-file="/static/precache.json">
         </platinum-sw-cache>
     </platinum-sw-register>
@@ -136,9 +147,6 @@
 <!-- build:js scripts/app.js -->
 <script src="/static/scripts/app.js"></script>
 <!-- endbuild-->
-<script>
-
-</script>
 
 </body>
 
