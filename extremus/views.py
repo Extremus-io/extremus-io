@@ -11,7 +11,11 @@ def login(request):
         for field in form.fields:
             json += [field_to_json(form, field)]
         return HttpResponse(JSON.dumps(json))
-    request.POST = JSON.loads(request.body.decode('utf-8'))
+    try:
+        request.POST = JSON.loads(request.body.decode('utf-8'))
+    except JSON.JSONDecodeError:
+        pass
+
     form = AuthenticationForm(request=request, data=request.POST)
     if form.is_valid():
         auth_login(request, form.get_user())

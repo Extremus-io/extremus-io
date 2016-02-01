@@ -61,17 +61,19 @@
             text-decoration: none;
             color: #ce3b31;
         }
-        .controller-detail{
-            margin:15px;
-            padding:25px;
-            font-size:15px;
+
+        .controller-detail {
+            margin: 15px;
+            padding: 25px;
+            font-size: 15px;
         }
-        #console{
-            padding:20px;
-            background:rgba(255,255,255,0.4);
-            border-radius:10px;
-            height:300px;
-            overflow:auto;
+
+        #console {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+            height: 300px;
+            overflow: auto;
         }
     </style>
     <template>
@@ -119,7 +121,12 @@
                         <code>
                             <pre id="console"></pre>
                         </code>
-                        <paper-input></paper-input>
+                        <section class="layout horizontal">
+                            <paper-input id="smsg" class="flex"></paper-input>
+                            <iron-a11y-keys target="[[consoleIputElemnt]]" keys="enter"
+                                            on-keys-pressed="sendmsg"></iron-a11y-keys>
+                            <paper-icon-button class="self-center" icon="send" on-press="sendmsg"></paper-icon-button>
+                        </section>
                     </section>
                 </iron-pages>
             </paper-header-panel>
@@ -127,7 +134,7 @@
         <paper-toast id="offline"
                      duration="6000"
                      text="The app is offline">
-            <span role="button" onclick="{{ retry }}">Retry</span>
+            <span role="button" onclick="{{ recon }}">Retry</span>
         </paper-toast>
     </template>
     <script>
@@ -154,7 +161,92 @@
                 'detail': {
                     type: Number,
                     value: -1
+                },
+                'consoleIputElemnt': {
+                    type: Object,
+                    value: function () {
+                        return this.$.smsg;
+                    }
+                },
+                'ws': {
+                    type: Object,
+                    value: null
                 }
+            },
+            'attached': function () {
+                var ws = new WebSocket("ws://localhost/ws/user/");
+                var controller = this;
+                ws.onmessage = function (evt) {
+                    data = JSON.parse(evt.data);
+                    if (!data.auth && typeof(data.auth) !== "undefined") {
+                        var login_dialog = document.getElementById(('login_dialog'));
+                        login_dialog.Error = true;
+                        login_dialog.LoginError = 'Please login to continue';
+                        login_dialog.noCancel = true;
+                        login_dialog.open();
+                    }
+                    controller.msgHandler(evt.data);
+                };
+                ws.onopen = function () {
+                    var toast = document.getElementById('online-toast');
+                    toast.text = 'Connected!';
+                    toast.show();
+                };
+                ws.onerror = function () {
+                    var toast = document.getElementById('offline-toast');
+                    toast.text = 'App is offline!';
+                    toast.show();
+                };
+                ws.onclose = function () {
+                    var toast = document.getElementById('offline-toast');
+                    toast.text = 'App is offline!';
+                    toast.show();
+                    this.recon();
+                };
+                this.ws = ws;
+            },
+            'recon': function () {
+                var ws = new WebSocket("ws://localhost/ws/user/");
+                var controller = this;
+                ws.onmessage = function (evt) {
+                    data = JSON.parse(evt.data);
+                    if (!data.auth && typeof(data.auth) !== "undefined") {
+                        var login_dialog = document.getElementById(('login_dialog'));
+                        login_dialog.Error = true;
+                        login_dialog.LoginError = 'Please login to continue';
+                        login_dialog.noCancel = true;
+                        login_dialog.open();
+                    }
+                    controller.msgHandler(evt.data);
+                };
+                ws.onopen = function () {
+                    var toast = document.getElementById('online-toast');
+                    toast.text = 'Connected!';
+                    toast.show();
+                };
+                ws.onerror = function () {
+                    var toast = document.getElementById('offline-toast');
+                    toast.text = 'App is offline!';
+                    toast.show();
+                };
+                ws.onclose = function () {
+                    var toast = document.getElementById('offline-toast');
+                    toast.text = 'App is offline!';
+                    toast.show();
+                    this.recon();
+                };
+                this.ws = ws;
+            },
+            'sendmsg': function () {
+                var msg = {type: 'send', to: this.detail, msg: this.$.smsg.value};
+                this.$.smsg.value = null;
+                var data = "";
+                for (key in msg)
+                    data += "<< " + key + " : " + msg[key] + "\n"
+                this.$.console.textContent += data + "\n";
+                this.$.console.scrollTop = this.$.console.scrollHeight;
+                msg = JSON.stringify(msg);
+                this.ws.send(msg);
             },
             'handleResponse': function () {
                 this.online = true;
@@ -173,15 +265,15 @@
                     return 'offline';
                 }
             },
-            'showDetail': function (ws, cont_id) {
+            'showDetail': function (cont_id) {
                 data = {type: 'sub', to: cont_id};
-                ws.send(JSON.stringify(data));
-                this.$.console.textContent="";
+                this.ws.send(JSON.stringify(data));
+                this.$.console.textContent = "";
                 this.display = 'detail';
                 this.detail = cont_id;
                 return true;
             },
-            'showMenu': function (ws) {
+            'showMenu': function () {
                 if (this.detail != -1) {
                     data = {type: 'unsub', to: this.detail};
                     ws.send(JSON.stringify(data))
@@ -192,14 +284,12 @@
                 data = "";
                 msg = JSON.parse(msg);
                 for (key in msg)
-                    data += ">> "+key + " : " + msg[key] + "\n"
+                    data += ">> " + key + " : " + msg[key] + "\n"
                 this.$.console.textContent += data + "\n";
                 this.$.console.scrollTop = this.$.console.scrollHeight;
             }
         });
         //jshint ignore:end
-        document.addEventListener('online-changed', function (data) {
-            console.log(data);
-        });
+
     </script>
 </dom-module>

@@ -136,6 +136,7 @@
                           href="/sw-import.js">
         <platinum-sw-fetch path="/(.*).json" handler="networkOnly"></platinum-sw-fetch>
         <platinum-sw-fetch path="/login/" handler="networkOnly"></platinum-sw-fetch>
+        <platinum-sw-fetch path="/admin/(.*)" handler="networkOnly"></platinum-sw-fetch>
         <platinum-sw-cache default-cache-strategy="fastest"
                            precache-file="/static/precache.json">
         </platinum-sw-cache>

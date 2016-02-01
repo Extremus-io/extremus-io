@@ -187,7 +187,9 @@ class UserWebSocket(WSGIMixin, BaseWSClass):
         if not socket.user.is_authenticated():
             data = {'auth': False}
             socket.send(json.dumps(data))
-        print(socket.id)
+        else:
+            data = {'auth': True}
+            socket.send(json.dumps(data))
 
     @classmethod
     def on_message(cls, socket, message):
@@ -196,9 +198,15 @@ class UserWebSocket(WSGIMixin, BaseWSClass):
         type = msg.get("type")
         if type == "send":
             to = msg.get("to")
-            cont = WebSocketServer.get_websocket_by_id(int(to))
-            if cont is not None:
-                cont.send(msg.get('msg', "blank"))
+            try:
+                cont = Controller.objects.get(id=int(to))
+                if cont.online:
+                    cont.websocket.send(msg.get('msg', "blank"))
+                else:
+                    socket.send(json.dumps({'type': 'error', 'msg': 'Controller Offline'}))
+            except Controller.DoesNotExist:
+                    socket.send(json.dumps({'type': 'error', 'msg': 'Controller Doesnot Exist'}))
+
         if type == "sub":
             to = msg.get("to")
             if to is not None:
@@ -208,6 +216,9 @@ class UserWebSocket(WSGIMixin, BaseWSClass):
             if to is not None:
                 ControllerPubSub.unsub(socket.id, to)
 
+    @classmethod
+    def on_close(cls, socket):
+        print("user Disconnected")
 
 class ControllerPubSub:
     room = {}
