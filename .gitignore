@@ -8,3 +8,4 @@ webapp/bower_components
 *__pycache__
 *migrations
 webapp/static
+.DS_Store

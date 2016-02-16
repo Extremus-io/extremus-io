@@ -6,13 +6,17 @@ class ModuleInline(admin.StackedInline):
     model = Module
     exclude = ['is_core']
     extra = 0
+    fieldsets = (("Edit", {
+        'fields': ('module_id', 'description'),
+        'classes': ('collapse',)
+    }),)
 
 
+@admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     inlines = [
         ModuleInline
     ]
 
-admin.site.register(Product, ProductAdmin)
 admin.site.register(Chipset)
 # Register your models here.

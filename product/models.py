@@ -7,8 +7,7 @@ class Chipset(models.Model):
     oem = models.CharField(max_length=30, help_text="maker of the chip", verbose_name="OEM")
 
     def __str__(self):
-        return self.name + " (" + self.oem + ")"
-
+        return "%s (%s)" % (self.name, self.oem)
 
 """
     This contains the definition for a the Product that is going to connect
@@ -28,7 +27,7 @@ class Product(models.Model):
         self.modules = Module.objects.filter(product=self)
 
     id = models.CharField(unique=True, primary_key=True, verbose_name="Product ID", max_length=30,
-                          help_text="Used to identify product. It has to be unique",
+                          help_text="Used to identify product. It has to be unique, It cannot be edited",
                           validators=[validate_id])
     name = models.CharField(help_text="Displayed in controller and your app", max_length=30)
     chipset = models.ForeignKey(Chipset)
@@ -40,11 +39,14 @@ class Product(models.Model):
 
 class Module(models.Model):
     module_id = models.CharField(verbose_name="Module ID", max_length=30,
-                                 help_text="module name is unique for a product name",
+                                 help_text="has to be UNIQUE for a product",
                                  validators=[validate_id, validate_module_id])
-    description = models.CharField(max_length=500, default="No description provided")
+    description = models.TextField(max_length=500, default="No description provided")
     is_core = models.BooleanField(default=False)
     product = models.ForeignKey(Product)
 
+    class Meta:
+        unique_together = (("module_id", "product"),)
+
     def __str__(self):
-        return self.product.id+"."+self.module_id
+        return "%s.%s"%(self.product.id, self.module_id)
