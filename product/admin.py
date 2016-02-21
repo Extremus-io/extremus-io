@@ -7,7 +7,7 @@ class ModuleInline(admin.StackedInline):
     exclude = ['is_core']
     extra = 0
     fieldsets = (("Edit", {
-        'fields': ('module_id', 'description'),
+        'fields': ('module_id', 'description', 'raw_methods'),
         'classes': ('collapse',)
     }),)
 
